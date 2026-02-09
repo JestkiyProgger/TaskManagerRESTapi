@@ -14,13 +14,9 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) Create(ctx context.Context, title, description, status string) error {
+func (s *Service) Create(ctx context.Context, title, description, status string) (uuid.UUID, error) {
 	if title == "" {
-		return ErrInvalidTitle
-	}
-
-	if status == "" {
-		status = "todo"
+		return uuid.Nil, ErrInvalidTitle
 	}
 
 	t := &Task{
@@ -29,7 +25,12 @@ func (s *Service) Create(ctx context.Context, title, description, status string)
 		Description: description,
 		Status:      status,
 	}
-	return s.repo.Create(ctx, t)
+
+	if err := s.repo.Create(ctx, t); err != nil {
+		return uuid.Nil, err
+	}
+
+	return t.ID, nil
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Task, error) {

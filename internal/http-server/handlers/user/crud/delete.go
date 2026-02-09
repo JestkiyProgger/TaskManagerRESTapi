@@ -9,14 +9,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
 type DeleteRequest struct {
-	ID uuid.UUID `json:"id" validate:"required"`
+	ID uuid.UUID `json:"id"`
 }
 
 type DeleteResponse struct {
@@ -29,54 +29,44 @@ type DeleteService interface {
 
 func NewDeleteHandler(log *slog.Logger, service DeleteService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers/user/create.NewDeleteHandler"
+		const op = "handlers/user/delete.NewDeleteHandler"
 
 		log = log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
 
-		var req DeleteRequest
+		idStr := chi.URLParam(r, "id")
 
-		err := render.DecodeJSON(r.Body, &req)
+		id, err := uuid.Parse(idStr)
 		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err))
+			log.Error("invalid UUID format",
+				slog.String("id", idStr),
+				sl.Err(err))
 
-			render.JSON(w, r, resp.Error("failed to decode request"))
-
+			render.JSON(w, r, resp.Error("invalid user ID format"))
 			return
 		}
 
-		log.Info("request body decoded", slog.Any("request", req))
+		log.Info("deleting user", slog.String("id", id.String()))
 
-		if err := validator.New().Struct(req); err != nil {
-			var validateErr validator.ValidationErrors
-			errors.As(err, &validateErr)
-
-			log.Error("failed to validate request", sl.Err(err))
-
-			render.JSON(w, r, resp.ValidationError(validateErr))
-
-			return
-		}
-
-		err = service.Delete(r.Context(), req.ID)
+		err = service.Delete(r.Context(), id)
 		if errors.Is(err, errors2.ErrUserNotFound) {
-			log.Info("user not found", slog.String("id", req.ID.String()))
+			log.Info("user not found", slog.String("id", id.String()))
 
 			render.JSON(w, r, resp.Error("user not found"))
 
 			return
 		}
 		if err != nil {
-			log.Info("failed to user not found", sl.Err(err))
+			log.Info("failed delete user", sl.Err(err))
 
-			render.JSON(w, r, resp.Error("failed to user not found"))
+			render.JSON(w, r, resp.Error("failed delete user"))
 
 			return
 		}
 
-		log.Info("user delete", slog.String("id", req.ID.String()))
+		log.Info("user delete", slog.String("id", id.String()))
 
 		render.JSON(w, r, DeleteResponse{
 			Response: resp.OK(),

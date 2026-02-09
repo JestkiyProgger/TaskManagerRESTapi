@@ -23,6 +23,7 @@ func (r *Repository) Create(ctx context.Context, t *Task) error {
 
 	const query = `INSERT INTO tasks(id, title, description, status, created_at) VALUES($1,$2,$3,$4,$5)`
 	_, err := r.db.ExecContext(ctx, query, t.ID, t.Title, t.Description, t.Status, t.CreatedAt)
+
 	return err
 }
 
