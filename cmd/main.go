@@ -2,19 +2,19 @@ package main
 
 import (
 	"ProjectManagementAPI/internal/config"
-	tcrud "ProjectManagementAPI/internal/http-server/handlers/task/crud"
-	ucrud "ProjectManagementAPI/internal/http-server/handlers/user/crud"
+	taskHttp "ProjectManagementAPI/internal/http-server/handlers/task"
+	userHttp "ProjectManagementAPI/internal/http-server/handlers/user"
 	mwLogger "ProjectManagementAPI/internal/http-server/middleware/logger"
-	"ProjectManagementAPI/internal/lib/logger/handlers/slogpretty"
 	"ProjectManagementAPI/internal/lib/logger/sl"
+	taskRepository "ProjectManagementAPI/internal/repository/postgres/task"
+	userRepository "ProjectManagementAPI/internal/repository/postgres/user"
 	"ProjectManagementAPI/internal/storage/postgre"
-	tasksvc "ProjectManagementAPI/internal/task"
-	usersvc "ProjectManagementAPI/internal/user"
+	taskService "ProjectManagementAPI/internal/usecase/task"
+	userService "ProjectManagementAPI/internal/usecase/user"
 	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/fatih/color"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -26,18 +26,12 @@ const (
 )
 
 func main() {
-	// init config: cleanenv
-
 	cfg := config.MustLoad()
-
-	// init logger: slog
 
 	logger := setupLogger(cfg.Env)
 
 	logger.Info("starting task-management", slog.String("env", cfg.Env))
 	logger.Debug("debug messages are enabled")
-
-	// init storage: PostgreSQL
 
 	storage, err := postgre.New(cfg.Postgres.DSN)
 	if err != nil {
@@ -53,8 +47,6 @@ func main() {
 		}
 	}(storage)
 
-	// init router: chi, "chi render"
-
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
@@ -62,17 +54,26 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	userRepo := usersvc.NewRepository(storage.Db)
-	userService := usersvc.NewService(userRepo)
+	userRepo := userRepository.NewUserRepository(storage.Db)
+	taskRepo := taskRepository.NewTaskRepository(storage.Db)
 
-	taskRepo := tasksvc.NewRepository(storage.Db)
-	taskService := tasksvc.NewService(taskRepo)
+	userServ := userService.NewUserService(userRepo)
+	taskServ := taskService.NewTaskService(taskRepo)
 
-	router.Post("/user", ucrud.CreateNew(logger, userService))
-	router.Delete("/user/{id}", ucrud.NewDeleteHandler(logger, userService))
+	userHandler := userHttp.NewHandler(logger, userServ)
+	taskHandler := taskHttp.NewHandler(logger, taskServ)
 
-	router.Post("/task", tcrud.CreateNew(logger, taskService))
-	router.Delete("/task/{id}", tcrud.NewDeleteHandler(logger, taskService))
+	router.Route("/tasks", func(r chi.Router) {
+		r.Post("/", taskHandler.Create)
+		r.Delete("/{id}", taskHandler.Delete)
+		r.Get("/{id}", taskHandler.GetByID)
+	})
+
+	router.Route("/users", func(r chi.Router) {
+		r.Post("/", userHandler.Create)
+		r.Delete("/{id}", userHandler.Delete)
+		r.Get("/{id}", userHandler.GetByID)
+	})
 
 	logger.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
 
@@ -89,14 +90,13 @@ func main() {
 	}
 
 	logger.Error("server stopped")
-	// TODO: run server:
 }
 
 func setupLogger(env string) *slog.Logger {
 	var logger *slog.Logger
 	switch env {
 	case envLocal:
-		logger = setupPrettySlog()
+		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case envDev:
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case envProd:
@@ -104,18 +104,4 @@ func setupLogger(env string) *slog.Logger {
 	}
 
 	return logger
-}
-
-func setupPrettySlog() *slog.Logger {
-	color.NoColor = false
-
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
-
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
 }

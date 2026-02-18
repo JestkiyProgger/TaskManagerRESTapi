@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/internal/task/repository.go" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/internal/user/repository.go" dialect="PostgreSQL" />
-    <file url="file://$PROJECT_DIR$/internal/user_task/repository.go" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/internal/repository/postgres/task/repository.go" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/internal/repository/postgres/user/repository.go" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/migrations/000001_create_users_table.up.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/migrations/000002_create_tasks_table.up.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/migrations/000003_create_user_tasks_table.up.sql" dialect="PostgreSQL" />

@@ -12,4 +12,5 @@ type Task struct {
 	Description string
 	Status      string
 	CreatedAt   time.Time
+	Assignees   []uuid.UUID
 }

@@ -1,14 +1,15 @@
 package user
 
 import (
+	"ProjectManagementAPI/internal/domain/user"
 	"context"
 
 	"github.com/google/uuid"
 )
 
 type RepositoryInterface interface {
-	Create(ctx context.Context, u *User) error
-	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	Create(ctx context.Context, u *user.User) error
+	GetByID(ctx context.Context, id uuid.UUID) (*user.User, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 }
 
@@ -16,12 +17,12 @@ type Service struct {
 	repo RepositoryInterface
 }
 
-func NewService(repo RepositoryInterface) *Service {
+func NewUserService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
 func (s *Service) Create(ctx context.Context, email, name string) (uuid.UUID, error) {
-	u := &User{
+	u := &user.User{
 		ID:    uuid.New(),
 		Email: email,
 		Name:  name,
@@ -34,7 +35,7 @@ func (s *Service) Create(ctx context.Context, email, name string) (uuid.UUID, er
 	return u.ID, nil
 }
 
-func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
